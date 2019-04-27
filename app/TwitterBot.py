@@ -5,6 +5,7 @@ import csv
 import threading
 import traceback
 import logging
+import datetime
 
 print("twitter auth starting")
 keysCfg = open("config/keys.acecfg", "r")
@@ -23,7 +24,11 @@ api = twitter.Api(
     tweet_mode='extended')
 
 
-print("twitter auth complete")
+def aceLog(message):
+    timestamp = datetime.datetime.now().strftime("[%Y-%m-%d_%H:%M:%S]> ")
+    print(timestamp + message)
+
+aceLog("twitter auth complete")
 
 
 def logTimeline():
@@ -47,12 +52,12 @@ def logTimeline():
                     alreadyLogged = True
                     break
         if alreadyLogged:
-            print("Tweet id " + status_id + " already logged, skipping.")
+            aceLog("Tweet id " + status_id + " already logged, skipping.")
             continue
 
         # reject if RT
         if status_full_text[0:2] == "RT":
-            print("Tweet id " + status_id + " is a retweet, skipping.")
+            aceLog("Tweet id " + status_id + " is a retweet, skipping.")
             continue
 
         tweetData = [status_id, status_full_text]
@@ -61,7 +66,7 @@ def logTimeline():
         with open(r'logs/twitter_log.csv', 'a') as f:
             csvWriter = csv.writer(f)
             csvWriter.writerow(tweetData)
-            print("Logged new Tweet:" +
+            aceLog("Logged new Tweet:" +
             "\n id: " + tweetData[0]
             + "\n full_text: " + tweetData[1])
 
@@ -70,21 +75,21 @@ def sendTweet(text):
         try:
             status = api.PostUpdate(text)
         except UnicodeDecodeError:
-                print("Your message could not be encoded.  Perhaps it contains non-ASCII characters? ")
-                print("Try explicitly specifying the encoding with the --encoding flag")
+                aceLog("Your message could not be encoded.  Perhaps it contains non-ASCII characters?" +
+                +"\nTry explicitly specifying the encoding with the --encoding flag ")
                 sys.exit(2)
-        print("{0} just posted: {1}".format(status.user.name, status.text))
+        aceLog("{0} just posted: {1}".format(status.user.name, status.text))
 
 
 # main Twitter Bot Tasks
 def runTwitterBotTasks():
     sleepMinutes = 5
-    threading.Timer(60.0, runTwitterBotTasks).start()
-    print("Starting Twitter Bot Tasks")
+    threading.Timer(60.0 * sleepMinutes, runTwitterBotTasks).start()
+    aceLog("Starting Twitter Bot Tasks")
     try:
         logTimeline()
     except Exception as e:
-        print("ERROR Occured while performing logTimeLine")
+        aceLog("ERROR Occured while performing logTimeLine")
         logging.error(traceback.format_exc())
     
     # TODO: listen for admin commands via direct message
@@ -95,7 +100,7 @@ def runTwitterBotTasks():
 
     # etc
 
-    print("Completed Twitter Bot Tasks. Sleeping for " + str(sleepMinutes) + " minutes...")
+    aceLog("Completed Twitter Bot Tasks. Sleeping for " + str(sleepMinutes) + " minutes...")
 
 
 runTwitterBotTasks()
