@@ -95,7 +95,7 @@ def runTwitterBotTasks():
 
     # etc
 
-    print("Completed Twitter Bot Tasks. Sleeping for " + sleepMinutes + " minutes...")
+    print("Completed Twitter Bot Tasks. Sleeping for " + str(sleepMinutes) + " minutes...")
 
 
 runTwitterBotTasks()
