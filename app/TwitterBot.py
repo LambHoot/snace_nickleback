@@ -75,15 +75,14 @@ def sendTweet(text):
         try:
             status = api.PostUpdate(text)
         except UnicodeDecodeError:
-                aceLog("Your message could not be encoded.  Perhaps it contains non-ASCII characters?" +
-                +"\nTry explicitly specifying the encoding with the --encoding flag ")
+                aceLog("Your message could not be encoded.  Perhaps it contains non-ASCII characters?\nTry explicitly specifying the encoding with the --encoding flag ")
                 sys.exit(2)
         aceLog("{0} just posted: {1}".format(status.user.name, status.text))
 
 
 # main Twitter Bot Tasks
 def runTwitterBotTasks():
-    sleepMinutes = 5
+    sleepMinutes = 10
     threading.Timer(60.0 * sleepMinutes, runTwitterBotTasks).start()
     aceLog("Starting Twitter Bot Tasks")
     try:
