@@ -3,6 +3,8 @@ import Utils
 
 vocabularyFilePath = "languageArtifacts/vocabulary.csv"
 wordCountDictionary = {}
+global totalWords
+global totalUniqueWords
 
 def initArtifacts():
     # clears the file if it already exists. This is desired behavior.
@@ -10,17 +12,32 @@ def initArtifacts():
     # TODO: fill this with more artifacts to init
 
 def processTextEntryForVocabulary(textEntry):
+    totalWords = 0
+    totalUniqueWords = 0
+
     # split text into "words"
     words = textEntry.split()
-    for word in words:
+
+    for i in range(len(words)):
+        word = words[i]
         #if(Utils.checkIfCsvContainsId(word, 0, vocabularyFilePath)):
         if(word in wordCountDictionary):
             wordCountDictionary[word] += 1
+            totalWords += 1
             print("Found '" + word + "' already in vocabulary. Increased its count to " + str(wordCountDictionary[word]))
         else:
             # add new word
             wordCountDictionary[word] = 1
+            totalWords += 1
+            totalUniqueWords += 1
             print("Added new word '" + word + "' to vocabulary with count " + str(wordCountDictionary[word]))
+        
+        # TODO: iterate through the rest of the words past current word
+        # then start building some sort of ngram structures (probably a list of ngram datas)
+        # finally, export the ngrams to csv files
+
+
+
             
 def createVocabularyFromLog(logFileName):
     print("creating the vocabulary")

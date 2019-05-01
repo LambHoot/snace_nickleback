@@ -59,6 +59,10 @@ def logTimeline():
         if status_full_text[0:2] == "RT":
             aceLog("Tweet id " + status_id + " is a retweet, skipping.")
             continue
+        # reject if quote
+        if status_full_text[0] == '"' and status_full_text[-1] == '"':
+            aceLog("Tweet id " + status_id + " is a quote, skipping.")
+            continue
 
         tweetData = [status_id, status_full_text]
         
