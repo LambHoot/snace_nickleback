@@ -7,6 +7,7 @@ import traceback
 import logging
 import datetime
 import rnndriver
+import random
 
 print("twitter auth starting")
 keysCfg = open("config/keys.acecfg", "r")
@@ -16,6 +17,7 @@ apiKey = lines[0]
 apiKeySecret = lines[1]
 accessToken = lines[2]
 accessTokenSecret = lines[3]
+aceId = "896115303289155590"
 
 api = twitter.Api(
     consumer_key=apiKey,
@@ -43,6 +45,11 @@ def logTimeline():
     for status in followingStatuses:
         status_id = status.id_str
         status_full_text = status.full_text
+
+        # reject if own tweet
+        if (status.user.id_str == aceId):
+            aceLog("Tweet id " + status_id + " is own, skipping.")
+            continue
 
         # reject if already contained
         alreadyLogged = False
@@ -92,6 +99,18 @@ def sendTweet(text):
         if tweetPosted:
             aceLog("{0} just posted: {1}".format(status.user.name, status.text))
 
+def randomTweetTask():
+    tweetChance = random.randint(1,100)
+    if(tweetChance <= 75):
+
+        try:
+            #LH script based tweet
+            lhtweet = rnndriver.generateLhTweet()
+            sendTweet( lhtweet )
+        except Exception as e:
+            aceLog("ERROR Occured while performing sendTweet")
+            logging.error(traceback.format_exc())
+
 
 # main Twitter Bot Tasks
 def runTwitterBotTasks():
@@ -107,12 +126,7 @@ def runTwitterBotTasks():
     # TODO: listen for admin commands via direct message
 
     # TODO: generate random chance for new tweets
-    try:
-        lhtweet = rnndriver.generateLhTweet()
-        sendTweet( lhtweet )
-    except Exception as e:
-        aceLog("ERROR Occured while performing sendTweet")
-        logging.error(traceback.format_exc())
+    randomTweetTask()
 
     # TODO: detect @'s and generate replies to them
 
