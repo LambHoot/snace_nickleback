@@ -2,6 +2,12 @@
 
 Here are any notes regarding setting this up and streaming it.
 
+pip install python-twitter
+pip install textgenrnn
+https://www.tensorflow.org/install/pip
+.\venv\Scripts\activate
+deactivate  # don't exit until you're done using TensorFlow
+
 # Streaming
 To get vs code to be streamable by obs, it must be launched without hardware acceleration through windows powershell:
 > code --disable-gpu

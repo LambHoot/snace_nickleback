@@ -1,4 +1,4 @@
-import twitter
+import twitter #actually fine
 import sys
 import json
 import csv
@@ -6,6 +6,7 @@ import threading
 import traceback
 import logging
 import datetime
+import rnndriver
 
 print("twitter auth starting")
 keysCfg = open("config/keys.acecfg", "r")
@@ -69,19 +70,27 @@ def logTimeline():
         # write data to log file
         with open(r'logs/twitter_log.csv', 'a') as f:
             csvWriter = csv.writer(f)
-            csvWriter.writerow(tweetData)
-            aceLog("Logged new Tweet:" +
-            "\n id: " + tweetData[0]
-            + "\n full_text: " + tweetData[1])
+            loggedTweet = False
+            try:
+                csvWriter.writerow(tweetData)
+                loggedTweet = True
+            except Exception as e:
+                aceLog("Tweet id " + tweetData[0] + " has an encoding issue, skipping.")
+            if loggedTweet :
+                aceLog("Logged new Tweet:" +
+                "\n id: " + tweetData[0]
+                + "\n full_text: " + tweetData[1])
 
 def sendTweet(text):
-    if False: #temporarily blocking tweets
+    tweetPosted = False
+    if True: #temporarily blocking tweets
         try:
             status = api.PostUpdate(text)
+            tweetPosted = True
         except UnicodeDecodeError:
-                aceLog("Your message could not be encoded.  Perhaps it contains non-ASCII characters?\nTry explicitly specifying the encoding with the --encoding flag ")
-                sys.exit(2)
-        aceLog("{0} just posted: {1}".format(status.user.name, status.text))
+            aceLog("Tweet text could not be encoded.")
+        if tweetPosted:
+            aceLog("{0} just posted: {1}".format(status.user.name, status.text))
 
 
 # main Twitter Bot Tasks
@@ -98,6 +107,12 @@ def runTwitterBotTasks():
     # TODO: listen for admin commands via direct message
 
     # TODO: generate random chance for new tweets
+    try:
+        lhtweet = rnndriver.generateLhTweet()
+        sendTweet( lhtweet )
+    except Exception as e:
+        aceLog("ERROR Occured while performing sendTweet")
+        logging.error(traceback.format_exc())
 
     # TODO: detect @'s and generate replies to them
 
