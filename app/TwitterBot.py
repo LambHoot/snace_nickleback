@@ -6,8 +6,10 @@ import threading
 import traceback
 import logging
 import datetime
-import rnndriver
 import random
+import os
+import time
+from textgenrnn import textgenrnn
 
 print("twitter auth starting")
 keysCfg = open("config/keys.acecfg", "r")
@@ -18,6 +20,14 @@ apiKeySecret = lines[1]
 accessToken = lines[2]
 accessTokenSecret = lines[3]
 aceId = "896115303289155590"
+lhId = "1197092900"
+global lastMentionId
+lastMentionId = ""
+muted = False
+
+textgen = textgenrnn(weights_path='lambhoot_weights.hdf5',
+        vocab_path='lambhoot_vocab.json',
+        config_path='lambhoot_config.json')
 
 api = twitter.Api(
     consumer_key=apiKey,
@@ -30,6 +40,7 @@ api = twitter.Api(
 def aceLog(message):
     timestamp = datetime.datetime.now().strftime("[%Y-%m-%d_%H:%M:%S]> ")
     print(timestamp + message)
+    return timestamp + message
 
 aceLog("twitter auth complete")
 
@@ -90,7 +101,7 @@ def logTimeline():
 
 def sendTweet(text):
     tweetPosted = False
-    if True: #temporarily blocking tweets
+    if not muted:
         try:
             status = api.PostUpdate(text)
             tweetPosted = True
@@ -98,22 +109,86 @@ def sendTweet(text):
             aceLog("Tweet text could not be encoded.")
         if tweetPosted:
             aceLog("{0} just posted: {1}".format(status.user.name, status.text))
+    else:
+        aceLog("Muted, did not post tweet.")
+
+def generateLhTweet():
+    return textgen.generate(max_gen_length=140, n=1, return_as_list=True)[0]
 
 def randomTweetTask():
     tweetChance = random.randint(1,100)
-    if(tweetChance <= 75):
+    if(tweetChance <= 40):
 
         try:
             #LH script based tweet
-            lhtweet = rnndriver.generateLhTweet()
+            lhtweet = generateLhTweet()
             sendTweet( lhtweet )
         except Exception as e:
             aceLog("ERROR Occured while performing sendTweet")
             logging.error(traceback.format_exc())
 
+def respondTo(tweet, responseText):
+    api.PostUpdate(responseText, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata=True)
+
+def responseTweetTask(sinceMentionId):
+    mentions = None
+    if len(sinceMentionId) > 0:
+        mentions = api.GetMentions(count=10, since_id=sinceMentionId)
+    else:
+        mentions = api.GetMentions(count=1)
+
+    sinceMentionId = mentions[0].id_str
+
+    for mention in mentions:
+        #LH script based tweet
+        responseText = generateLhTweet()
+        responsePosted = False
+        if not muted:
+            try:
+                respondTo(mention, responseText)
+                responsePosted = True
+            except UnicodeDecodeError:
+                aceLog("Reponse text could not be encoded.")
+            if responsePosted:
+                aceLog("Just posted reponse: '{0}' to {1}'s tweet '{2}'".format(responseText, mention.user.name, mention.text))
+        else:
+            aceLog("Muted, did not post response to {0}".format(mention.user.name))
+
+def messageAdmin(message):
+    api.PostDirectMessage(message, lhId)
+
+def adminControlTask():
+    # DirectMessage class:
+    # https://python-twitter.readthedocs.io/en/latest/_modules/twitter/models.html#DirectMessage
+    dms = []
+    try:
+        dms = api.GetDirectMessages()
+    except Exception as e:
+        aceLog("Couldn't get direct messages during adminControlTask")
+        logging.error(traceback.format_exc())
+
+    for dm in dms:
+        aceLog("Got DIRECT MESSAGE '{0}' from {1}".format(dm.text, dm.sender_id))
+        if dm.sender_id == lhId:
+            adminCommand = dm.text
+            aceLog("Got Admin command: {0}".format(adminCommand))
+            if adminCommand == "mute":
+                if not muted:
+                    muted = True
+                    messageAdmin(aceLog("admin, I am now muted"))
+            if adminCommand == "unmute":
+                if muted:
+                    muted = False
+                    messageAdmin(aceLog("admin, I am now unmuted"))
+            if adminCommand == "shutdown":
+                aceLog("Admin requested shutdown. Shutting down in 30 seconds.")
+                time.sleep(30)
+                os.system('shutdown -s')
+    
 
 # main Twitter Bot Tasks
 def runTwitterBotTasks():
+    
     sleepMinutes = 10
     threading.Timer(60.0 * sleepMinutes, runTwitterBotTasks).start()
     aceLog("Starting Twitter Bot Tasks")
@@ -124,11 +199,25 @@ def runTwitterBotTasks():
         logging.error(traceback.format_exc())
     
     # TODO: listen for admin commands via direct message
+    try:
+        adminControlTask()
+    except Exception as e:
+        aceLog("ERROR Occured while performing adminControlTask")
+        logging.error(traceback.format_exc())
 
     # TODO: generate random chance for new tweets
-    randomTweetTask()
+    try:
+        randomTweetTask()
+    except Exception as e:
+        aceLog("ERROR Occured while performing randomTweetTask")
+        logging.error(traceback.format_exc())
 
     # TODO: detect @'s and generate replies to them
+    try:
+        responseTweetTask(lastMentionId)
+    except Exception as e:
+        aceLog("ERROR Occured while performing responseTweetTask")
+        logging.error(traceback.format_exc())
 
     # etc
 
