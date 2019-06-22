@@ -29,3 +29,9 @@ keys.acecfg {
     ACCESS_TOKEN_SECRET
 }
 
+# to find location of a module
+help('textgenrnn')
+
+# to run from windows powershell
+\GitHub2\snace_nickleback> python .\app\TwitterBot.py
+

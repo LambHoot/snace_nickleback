@@ -21,8 +21,7 @@ accessToken = lines[2]
 accessTokenSecret = lines[3]
 aceId = "896115303289155590"
 lhId = "1197092900"
-global lastMentionId
-lastMentionId = ""
+lastMentionId = "" # global variable
 muted = False
 
 textgen = textgenrnn(weights_path='lambhoot_weights.hdf5',
@@ -113,7 +112,8 @@ def sendTweet(text):
         aceLog("Muted, did not post tweet.")
 
 def generateLhTweet():
-    return textgen.generate(max_gen_length=140, n=1, return_as_list=True)[0]
+    #return textgen.generate(max_gen_length=140, n=1, return_as_list=True)[0]
+    return textgen.generate(max_gen_length=80, n=1, return_as_list=True)[0]
 
 def randomTweetTask():
     tweetChance = random.randint(1,100)
@@ -128,18 +128,23 @@ def randomTweetTask():
             logging.error(traceback.format_exc())
 
 def respondTo(tweet, responseText):
+    if tweet.user.id_str == aceId:
+        return
     api.PostUpdate(responseText, in_reply_to_status_id=tweet.id_str, auto_populate_reply_metadata=True)
 
-def responseTweetTask(sinceMentionId):
+def responseTweetTask():
+    global lastMentionId
     mentions = None
-    if len(sinceMentionId) > 0:
-        mentions = api.GetMentions(count=10, since_id=sinceMentionId)
+    if len(lastMentionId) > 0:
+        mentions = api.GetMentions(count=10, since_id=lastMentionId)
     else:
         mentions = api.GetMentions(count=1)
-
-    sinceMentionId = mentions[0].id_str
+        lastMentionId = mentions[0].id_str
+        return
 
     for mention in mentions:
+        if mention.id_str == lastMentionId:
+            return
         #LH script based tweet
         responseText = generateLhTweet()
         responsePosted = False
@@ -150,9 +155,11 @@ def responseTweetTask(sinceMentionId):
             except UnicodeDecodeError:
                 aceLog("Reponse text could not be encoded.")
             if responsePosted:
-                aceLog("Just posted reponse: '{0}' to {1}'s tweet '{2}'".format(responseText, mention.user.name, mention.text))
+                aceLog("Just posted reponse: '{0}' to {1}'s tweet '{2}'".format(responseText, mention.user.name, mention.full_text))
         else:
             aceLog("Muted, did not post response to {0}".format(mention.user.name))
+    if len(mentions) > 0:
+        lastMentionId = mentions[0].id_str
 
 def messageAdmin(message):
     api.PostDirectMessage(message, lhId)
@@ -165,7 +172,7 @@ def adminControlTask():
         dms = api.GetDirectMessages()
     except Exception as e:
         aceLog("Couldn't get direct messages during adminControlTask")
-        logging.error(traceback.format_exc())
+        #logging.error(traceback.format_exc())
 
     for dm in dms:
         aceLog("Got DIRECT MESSAGE '{0}' from {1}".format(dm.text, dm.sender_id))
@@ -214,7 +221,8 @@ def runTwitterBotTasks():
 
     # TODO: detect @'s and generate replies to them
     try:
-        responseTweetTask(lastMentionId)
+        responseTweetTask()
+        x = lastMentionId
     except Exception as e:
         aceLog("ERROR Occured while performing responseTweetTask")
         logging.error(traceback.format_exc())
