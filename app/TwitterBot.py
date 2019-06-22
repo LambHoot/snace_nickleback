@@ -9,7 +9,7 @@ import datetime
 import random
 import os
 import time
-from textgenrnn import textgenrnn
+import rnndriver
 
 print("twitter auth starting")
 keysCfg = open("config/keys.acecfg", "r")
@@ -23,10 +23,8 @@ aceId = "896115303289155590"
 lhId = "1197092900"
 lastMentionId = "" # global variable
 muted = False
-
-textgen = textgenrnn(weights_path='lambhoot_weights.hdf5',
-        vocab_path='lambhoot_vocab.json',
-        config_path='lambhoot_config.json')
+rnnService =  rnndriver.RnnService()
+rnnService.loadTextgen('lambhoot_weights.hdf5', 'lambhoot_vocab.json', 'lambhoot_config.json')
 
 api = twitter.Api(
     consumer_key=apiKey,
@@ -112,12 +110,15 @@ def sendTweet(text):
         aceLog("Muted, did not post tweet.")
 
 def generateLhTweet():
-    #return textgen.generate(max_gen_length=140, n=1, return_as_list=True)[0]
-    return textgen.generate(max_gen_length=80, n=1, return_as_list=True)[0]
+    temp = random.randint(1, 10) / 10
+    maxLength = random.randint(1, 140)
+    aceLog("Generating new text with max length {0} and temperature {1}".format(maxLength, temp))
+    return rnnService.generateLhTweet(maxLength, temp)
+    #return textgen.generate(max_gen_length=90, temperature=temp, n=1, return_as_list=True)[0]
 
 def randomTweetTask():
     tweetChance = random.randint(1,100)
-    if(tweetChance <= 40):
+    if(tweetChance <= 400):
 
         try:
             #LH script based tweet
@@ -222,7 +223,6 @@ def runTwitterBotTasks():
     # TODO: detect @'s and generate replies to them
     try:
         responseTweetTask()
-        x = lastMentionId
     except Exception as e:
         aceLog("ERROR Occured while performing responseTweetTask")
         logging.error(traceback.format_exc())
